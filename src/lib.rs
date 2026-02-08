@@ -1,6 +1,7 @@
 use std::{fmt::Write, os::unix::net::UnixListener, path::Path, time::Duration};
 
 use chrono::Local;
+use env_logger::Env;
 use ringbuffer::RingBuffer;
 use serde_json::json;
 
@@ -45,6 +46,8 @@ pub fn boot(
     model_override: Option<String>,
     initial_message: Option<String>,
 ) {
+    env_logger::init_from_env(Env::default().default_filter_or("llmaap=info"));
+
     let config = load_config(
         config_path_override,
         endpoint_override,
@@ -64,6 +67,7 @@ pub fn boot(
 
     let client = llm::Client::new();
 
+    log::info!("Booting...");
     let mut boot = true;
     let mut shutdown = false;
     while !shutdown {
@@ -85,6 +89,7 @@ pub fn boot(
             boot = false;
             boot_message
         } else {
+            log::info!("Sending heartbeat...");
             format!(
                 "System: heartbeat; 現在時刻: {}",
                 now.format("%Y年%m月%d日 %H時%M分"),
@@ -99,7 +104,7 @@ pub fn boot(
                 data.memory.clone().into_iter().flatten().collect(),
                 message_buffer.clone(),
             ) else {
-                println!("Failed to connect");
+                log::warn!("Failed to connect to the endpoint. Retry in 10secs...");
                 std::thread::sleep(Duration::from_secs(10));
                 continue;
             };
@@ -113,6 +118,7 @@ pub fn boot(
                     for call in calls {
                         let function = &call.function;
                         let name = &function.name;
+                        log::info!("Executing `{name}`...");
                         let result = match name.as_str() {
                             "exec" => tools::call_exec(function.arguments.as_ref()),
                             "notify" => {
