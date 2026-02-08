@@ -1,5 +1,5 @@
 use std::{
-    io::{BufRead, BufReader, Write},
+    io::{Read, Write},
     os::unix::net::UnixListener,
 };
 
@@ -85,14 +85,15 @@ fn readline(socket: &UnixListener) -> Result<String, String> {
         return Err(String::from("Failed to accept a connection from the admin"));
     };
 
-    if stream.write_all(b"?> ").is_err() {
+    if stream
+        .write_all(b"=== Waiting for a message ===\n")
+        .is_err()
+    {
         return Err(String::from("Failed to keep the connection to the admin"));
     }
 
-    let mut reader = BufReader::new(stream);
-
     let mut buf = String::new();
-    if reader.read_line(&mut buf).is_err() {
+    if stream.read_to_string(&mut buf).is_err() {
         return Err(String::from("Failed to decode the response from the admin"));
     }
 
