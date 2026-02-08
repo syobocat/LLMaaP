@@ -7,7 +7,7 @@ use crate::llm::Message;
 #[derive(Serialize, Deserialize)]
 struct SaveData {
     bootcount: u32,
-    memory: Vec<Vec<Message>>,
+    memory: Vec<Message>,
 }
 
 impl Default for SaveData {
@@ -21,7 +21,7 @@ impl Default for SaveData {
 
 pub struct Data {
     pub bootcount: u32,
-    pub memory: AllocRingBuffer<Vec<Message>>,
+    pub memory: AllocRingBuffer<Message>,
 }
 
 impl SaveData {
@@ -44,9 +44,9 @@ impl SaveData {
 }
 
 impl Data {
-    pub fn load(path: &str, context_size: u8) -> Self {
+    pub fn load(path: &str, context_size: usize) -> Self {
         let savedata = SaveData::load(path);
-        let mut memory = AllocRingBuffer::new(context_size as usize);
+        let mut memory = AllocRingBuffer::new(context_size);
         for shard in savedata.memory {
             memory.enqueue(shard);
         }

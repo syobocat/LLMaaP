@@ -1,7 +1,7 @@
 use std::{fmt::Write, os::unix::net::UnixListener, path::Path, time::Duration};
 
 use chrono::Local;
-use ringbuffer::{ConstGenericRingBuffer, RingBuffer};
+use ringbuffer::RingBuffer;
 use serde_json::json;
 
 use crate::{
@@ -51,7 +51,7 @@ pub fn boot(
         token_override,
         model_override,
     );
-    let data = Data::load(
+    let mut data = Data::load(
         data_path_override.unwrap_or(&String::from("data.json")),
         config.context_size,
     );
@@ -61,8 +61,6 @@ pub fn boot(
         std::fs::remove_file(socket_path).unwrap();
     }
     let socket = UnixListener::bind("/tmp/llmaap.sock").unwrap();
-
-    let mut memory = ConstGenericRingBuffer::<Vec<Message>, 5>::new();
 
     let now = Local::now();
     let mut boot_message = format!(
@@ -77,78 +75,70 @@ pub fn boot(
         )
         .unwrap();
     }
-    memory.enqueue(vec![Message::User {
+    data.memory.enqueue(Message::User {
         content: boot_message,
-    }]);
+    });
 
     let client = llm::Client::new();
 
     let mut shutdown = false;
     while !shutdown {
-        data.save(data_path_override.unwrap_or(&String::from("data.json")))
-            .expect("Savefile should be writebale");
-
-        let now = Local::now();
-        let heartbeat_message = format!(
-            "System: heartbeat; 現在時刻: {}",
-            now.format("%Y年%m月%d日 %H時%M分"),
-        );
-        memory.enqueue(vec![Message::User {
-            content: heartbeat_message,
-        }]);
-        let mut message_buffer = Vec::new();
         loop {
-            let Ok(resp) = client.send(
-                &config,
-                memory.clone().into_iter().flatten().collect(),
-                message_buffer.clone(),
-            ) else {
+            let Ok(resp) = client.send(&config, data.memory.to_vec()) else {
                 println!("Failed to connect");
                 std::thread::sleep(Duration::from_secs(10));
                 continue;
             };
             let choice = &resp.choices[0];
             let message = &choice.message;
-            message_buffer.push(Message::from_resp_message(message.clone()));
+            data.memory
+                .enqueue(Message::from_resp_message(message.clone()));
 
-            match choice.finish_reason {
-                FinishReason::Stop => {
-                    memory.enqueue(message_buffer);
-                    break;
-                }
-                FinishReason::ToolCalls => {
-                    let calls = message.tool_calls.as_ref().unwrap();
-                    for call in calls {
-                        let function = &call.function;
-                        let name = &function.name;
-                        let result = match name.as_str() {
-                            "exec" => tools::call_exec(function.arguments.as_ref()),
-                            "notify" => {
-                                tools::call_notify(function.arguments.as_ref(), &config.webhook)
-                            }
-                            "ask" => tools::call_ask(
-                                function.arguments.as_ref(),
-                                &config.webhook,
-                                &socket,
-                            ),
-                            "shutdown" => {
-                                shutdown = true;
-                                json!({
-                                    "msg": "Shutdown scheduled."
-                                })
-                                .to_string()
-                            }
-                            _ => json!({
-                                "err": format!("Failed to call a tool: Unknown function `{name}`")
+            if choice.finish_reason == FinishReason::ToolCalls {
+                let calls = message.tool_calls.as_ref().unwrap();
+                for call in calls {
+                    let function = &call.function;
+                    let name = &function.name;
+                    let result = match name.as_str() {
+                        "exec" => tools::call_exec(function.arguments.as_ref()),
+                        "notify" => {
+                            tools::call_notify(function.arguments.as_ref(), &config.webhook)
+                        }
+                        "ask" => {
+                            tools::call_ask(function.arguments.as_ref(), &config.webhook, &socket)
+                        }
+                        "shutdown" => {
+                            shutdown = true;
+                            json!({
+                                "msg": "Shutdown scheduled."
                             })
-                            .to_string(),
-                        };
-                        message_buffer.push(Message::Tool {
-                            content: result,
-                            tool_call_id: call.id.clone(),
-                        });
-                    }
+                            .to_string()
+                        }
+                        _ => json!({
+                            "err": format!("Failed to call a tool: Unknown function `{name}`")
+                        })
+                        .to_string(),
+                    };
+                    data.memory.enqueue(Message::Tool {
+                        content: result,
+                        tool_call_id: call.id.clone(),
+                    });
                 }
+            }
+
+            data.save(data_path_override.unwrap_or(&String::from("data.json")))
+                .expect("Savefile should be writebale");
+
+            if choice.finish_reason == FinishReason::Stop {
+                let now = Local::now();
+                let heartbeat_message = format!(
+                    "System: heartbeat; 現在時刻: {}",
+                    now.format("%Y年%m月%d日 %H時%M分"),
+                );
+                data.memory.enqueue(Message::User {
+                    content: heartbeat_message,
+                });
+                break;
             }
         }
     }

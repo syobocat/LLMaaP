@@ -7,7 +7,7 @@ pub struct Config {
     pub token: Option<String>,
     pub model: String,
     pub webhook: String,
-    pub context_size: u8,
+    pub context_size: usize,
     pub system_prompt: String,
 }
 
