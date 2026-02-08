@@ -4,10 +4,19 @@ use serde::{Deserialize, Serialize};
 
 use crate::llm::Message;
 
-#[derive(Default, Serialize, Deserialize)]
+#[derive(Serialize, Deserialize)]
 struct SaveData {
     bootcount: u32,
     memory: Vec<Vec<Message>>,
+}
+
+impl Default for SaveData {
+    fn default() -> Self {
+        Self {
+            bootcount: 1,
+            memory: Vec::new(),
+        }
+    }
 }
 
 pub struct Data {
