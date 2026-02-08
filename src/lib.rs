@@ -62,83 +62,92 @@ pub fn boot(
     }
     let socket = UnixListener::bind("/tmp/llmaap.sock").unwrap();
 
-    let now = Local::now();
-    let mut boot_message = format!(
-        "System: 起動完了。現在時刻は{}、これが{}回目の起動です。",
-        now.format("%Y年%m月%d日 %H時%M分"),
-        data.bootcount
-    );
-    if let Some(message) = initial_message {
-        write!(
-            boot_message,
-            "\n\n管理者からメッセージがあります:\n{message}"
-        )
-        .unwrap();
-    }
-    data.memory.enqueue(Message::User {
-        content: boot_message,
-    });
-
     let client = llm::Client::new();
 
+    let mut boot = true;
     let mut shutdown = false;
     while !shutdown {
+        let mut message_buffer = Vec::new();
         loop {
-            let Ok(resp) = client.send(&config, data.memory.to_vec()) else {
+            let now = Local::now();
+            let system_message = if boot {
+                let mut boot_message = format!(
+                    "System: 起動完了。現在時刻は{}、これが{}回目の起動です。",
+                    now.format("%Y年%m月%d日 %H時%M分"),
+                    data.bootcount
+                );
+                if let Some(ref message) = initial_message {
+                    write!(
+                        boot_message,
+                        "\n\n管理者からメッセージがあります:\n{message}"
+                    )
+                    .unwrap();
+                }
+                boot = false;
+                boot_message
+            } else {
+                format!(
+                    "System: heartbeat; 現在時刻: {}",
+                    now.format("%Y年%m月%d日 %H時%M分"),
+                )
+            };
+            message_buffer.push(Message::User {
+                content: system_message,
+            });
+
+            let Ok(resp) = client.send(
+                &config,
+                data.memory.clone().into_iter().flatten().collect(),
+                message_buffer.clone(),
+            ) else {
                 println!("Failed to connect");
                 std::thread::sleep(Duration::from_secs(10));
                 continue;
             };
             let choice = &resp.choices[0];
             let message = &choice.message;
-            data.memory
-                .enqueue(Message::from_resp_message(message.clone()));
+            message_buffer.push(Message::from_resp_message(message.clone()));
 
-            if choice.finish_reason == FinishReason::ToolCalls {
-                let calls = message.tool_calls.as_ref().unwrap();
-                for call in calls {
-                    let function = &call.function;
-                    let name = &function.name;
-                    let result = match name.as_str() {
-                        "exec" => tools::call_exec(function.arguments.as_ref()),
-                        "notify" => {
-                            tools::call_notify(function.arguments.as_ref(), &config.webhook)
-                        }
-                        "ask" => {
-                            tools::call_ask(function.arguments.as_ref(), &config.webhook, &socket)
-                        }
-                        "shutdown" => {
-                            shutdown = true;
-                            json!({
-                                "msg": "Shutdown scheduled."
+            match choice.finish_reason {
+                FinishReason::ToolCalls => {
+                    let calls = message.tool_calls.as_ref().unwrap();
+                    for call in calls {
+                        let function = &call.function;
+                        let name = &function.name;
+                        let result = match name.as_str() {
+                            "exec" => tools::call_exec(function.arguments.as_ref()),
+                            "notify" => {
+                                tools::call_notify(function.arguments.as_ref(), &config.webhook)
+                            }
+                            "ask" => tools::call_ask(
+                                function.arguments.as_ref(),
+                                &config.webhook,
+                                &socket,
+                            ),
+                            "shutdown" => {
+                                shutdown = true;
+                                json!({
+                                    "msg": "Shutdown scheduled."
+                                })
+                                .to_string()
+                            }
+                            _ => json!({
+                                "err": format!("Failed to call a tool: Unknown function `{name}`")
                             })
-                            .to_string()
-                        }
-                        _ => json!({
-                            "err": format!("Failed to call a tool: Unknown function `{name}`")
-                        })
-                        .to_string(),
-                    };
-                    data.memory.enqueue(Message::Tool {
-                        content: result,
-                        tool_call_id: call.id.clone(),
-                    });
+                            .to_string(),
+                        };
+                        message_buffer.push(Message::Tool {
+                            content: result,
+                            tool_call_id: call.id.clone(),
+                        });
+                    }
                 }
-            }
-
-            data.save(data_path_override.unwrap_or(&String::from("data.json")))
-                .expect("Savefile should be writebale");
-
-            if choice.finish_reason == FinishReason::Stop {
-                let now = Local::now();
-                let heartbeat_message = format!(
-                    "System: heartbeat; 現在時刻: {}",
-                    now.format("%Y年%m月%d日 %H時%M分"),
-                );
-                data.memory.enqueue(Message::User {
-                    content: heartbeat_message,
-                });
-                break;
+                FinishReason::Stop => {
+                    data.memory.enqueue(message_buffer);
+                    data.save(data_path_override.unwrap_or(&String::from("data.json")))
+                        .expect("Savefile should be writebale");
+                    break;
+                }
             }
         }
     }

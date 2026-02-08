@@ -64,7 +64,7 @@ pub struct Choice {
     pub message: ResponseMessage,
 }
 
-#[derive(PartialEq, Eq, Deserialize)]
+#[derive(Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum FinishReason {
     Stop,
@@ -87,11 +87,17 @@ impl Client {
             agent: ureq::agent(),
         }
     }
-    pub fn send(&self, config: &Config, memory: Vec<Message>) -> anyhow::Result<Response> {
+    pub fn send(
+        &self,
+        config: &Config,
+        memory: Vec<Message>,
+        buffer: Vec<Message>,
+    ) -> anyhow::Result<Response> {
         let mut messages = vec![Message::System {
             content: config.system_prompt.clone(),
         }];
         messages.extend(memory);
+        messages.extend(buffer);
         let req = json!({
             "model": config.model,
             "messages": messages,
