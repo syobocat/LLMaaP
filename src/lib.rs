@@ -68,33 +68,32 @@ pub fn boot(
     let mut shutdown = false;
     while !shutdown {
         let mut message_buffer = Vec::new();
-        loop {
-            let now = Local::now();
-            let system_message = if boot {
-                let mut boot_message = format!(
-                    "System: 起動完了。現在時刻は{}、これが{}回目の起動です。",
-                    now.format("%Y年%m月%d日 %H時%M分"),
-                    data.bootcount
-                );
-                if let Some(ref message) = initial_message {
-                    write!(
-                        boot_message,
-                        "\n\n管理者からメッセージがあります:\n{message}"
-                    )
-                    .unwrap();
-                }
-                boot = false;
-                boot_message
-            } else {
-                format!(
-                    "System: heartbeat; 現在時刻: {}",
-                    now.format("%Y年%m月%d日 %H時%M分"),
+        let now = Local::now();
+        let system_message = if boot {
+            let mut boot_message = format!(
+                "System: 起動完了。現在時刻は{}、これが{}回目の起動です。",
+                now.format("%Y年%m月%d日 %H時%M分"),
+                data.bootcount
+            );
+            if let Some(ref message) = initial_message {
+                write!(
+                    boot_message,
+                    "\n\n管理者からメッセージがあります:\n{message}"
                 )
-            };
-            message_buffer.push(Message::User {
-                content: system_message,
-            });
-
+                .unwrap();
+            }
+            boot = false;
+            boot_message
+        } else {
+            format!(
+                "System: heartbeat; 現在時刻: {}",
+                now.format("%Y年%m月%d日 %H時%M分"),
+            )
+        };
+        message_buffer.push(Message::User {
+            content: system_message,
+        });
+        loop {
             let Ok(resp) = client.send(
                 &config,
                 data.memory.clone().into_iter().flatten().collect(),
