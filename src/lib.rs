@@ -112,48 +112,42 @@ pub fn boot(
             let message = &choice.message;
             message_buffer.push(Message::from_resp_message(message.clone()));
 
-            match choice.finish_reason {
-                FinishReason::ToolCalls => {
-                    let calls = message.tool_calls.as_ref().unwrap();
-                    for call in calls {
-                        let function = &call.function;
-                        let name = &function.name;
-                        log::info!("Executing `{name}`...");
-                        let result = match name.as_str() {
-                            "exec" => tools::call_exec(function.arguments.as_ref()),
-                            "notify" => {
-                                tools::call_notify(function.arguments.as_ref(), &config.webhook)
-                            }
-                            "ask" => tools::call_ask(
-                                function.arguments.as_ref(),
-                                &config.webhook,
-                                &socket,
-                            ),
-                            "shutdown" => {
-                                shutdown = true;
-                                json!({
-                                    "msg": "Shutdown scheduled."
-                                })
-                                .to_string()
-                            }
-                            _ => json!({
-                                "err": format!("Failed to call a tool: Unknown function `{name}`")
+            if choice.finish_reason == FinishReason::ToolCalls {
+                let calls = message.tool_calls.as_ref().unwrap();
+                for call in calls {
+                    let function = &call.function;
+                    let name = &function.name;
+                    log::info!("Executing `{name}`...");
+                    let result = match name.as_str() {
+                        "exec" => tools::call_exec(function.arguments.as_ref()),
+                        "notify" => {
+                            tools::call_notify(function.arguments.as_ref(), &config.webhook)
+                        }
+                        "ask" => {
+                            tools::call_ask(function.arguments.as_ref(), &config.webhook, &socket)
+                        }
+                        "shutdown" => {
+                            shutdown = true;
+                            json!({
+                                "msg": "Shutdown scheduled."
                             })
-                            .to_string(),
-                        };
-                        message_buffer.push(Message::Tool {
-                            content: result,
-                            tool_call_id: call.id.clone(),
-                        });
-                    }
-                }
-                FinishReason::Stop => {
-                    data.memory.enqueue(message_buffer);
-                    data.save(data_path_override.unwrap_or(&String::from("data.json")))
-                        .expect("Savefile should be writebale");
-                    break;
+                            .to_string()
+                        }
+                        _ => json!({
+                            "err": format!("Failed to call a tool: Unknown function `{name}`")
+                        })
+                        .to_string(),
+                    };
+                    message_buffer.push(Message::Tool {
+                        content: result,
+                        tool_call_id: call.id.clone(),
+                    });
                 }
             }
+            data.memory.enqueue(message_buffer);
+            data.save(data_path_override.unwrap_or(&String::from("data.json")))
+                .expect("Savefile should be writebale");
+            break;
         }
     }
 }
