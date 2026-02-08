@@ -72,8 +72,6 @@ pub fn boot(
     let mut shutdown = false;
     while !shutdown {
         let mut message_buffer = Vec::new();
-        let mut tool_calls = 0;
-
         let now = Local::now();
         let system_message = if boot {
             let mut boot_message = format!(
@@ -114,56 +112,42 @@ pub fn boot(
             let message = &choice.message;
             message_buffer.push(Message::from_resp_message(message.clone()));
 
-            match choice.finish_reason {
-                FinishReason::ToolCalls => {
-                    tool_calls += 1;
-
-                    let calls = message.tool_calls.as_ref().unwrap();
-                    for call in calls {
-                        if config
-                            .max_consecutive_tool_calls
-                            .is_some_and(|max| tool_calls > max)
-                        {
-                            let err = json!({"notice": "You are using Tool Calls too many times in a row. Please finish the output for now, and please try again."}).to_string();
-                            message_buffer.push(Message::Tool {
-                                content: err,
-                                tool_call_id: call.id.clone(),
-                            });
-                            continue;
+            if choice.finish_reason == FinishReason::ToolCalls {
+                let calls = message.tool_calls.as_ref().unwrap();
+                for call in calls {
+                    let function = &call.function;
+                    let name = &function.name;
+                    log::info!("Executing `{name}`...");
+                    let result = match name.as_str() {
+                        "exec" => tools::call_exec(function.arguments.as_ref()),
+                        "notify" => {
+                            tools::call_notify(function.arguments.as_ref(), &config.webhook)
                         }
-
-                        let function = &call.function;
-                        let name = &function.name;
-                        log::info!("Executing `{name}`...");
-                        let result = match name.as_str() {
-                            "exec" => tools::call_exec(function.arguments.as_ref()),
-                            "notify" => {
-                                tools::call_notify(function.arguments.as_ref(), &config.webhook)
-                            }
-                            "ask" => tools::call_ask(
-                                function.arguments.as_ref(),
-                                &config.webhook,
-                                &socket,
-                            ),
-                            "shutdown" => {
-                                shutdown = true;
-                                json!({"msg": "Shutdown scheduled."}).to_string()
-                            }
-                            _ => json!({"err": format!("Failed to call a tool: Unknown function `{name}`")}).to_string(),
-                        };
-                        message_buffer.push(Message::Tool {
-                            content: result,
-                            tool_call_id: call.id.clone(),
-                        });
-                    }
-                }
-                FinishReason::Stop => {
-                    data.memory.enqueue(message_buffer);
-                    data.save(data_path_override.unwrap_or(&String::from("data.json")))
-                        .expect("Savefile should be writebale");
-                    break;
+                        "ask" => {
+                            tools::call_ask(function.arguments.as_ref(), &config.webhook, &socket)
+                        }
+                        "shutdown" => {
+                            shutdown = true;
+                            json!({
+                                "msg": "Shutdown scheduled."
+                            })
+                            .to_string()
+                        }
+                        _ => json!({
+                            "err": format!("Failed to call a tool: Unknown function `{name}`")
+                        })
+                        .to_string(),
+                    };
+                    message_buffer.push(Message::Tool {
+                        content: result,
+                        tool_call_id: call.id.clone(),
+                    });
                 }
             }
+            data.memory.enqueue(message_buffer);
+            data.save(data_path_override.unwrap_or(&String::from("data.json")))
+                .expect("Savefile should be writebale");
+            break;
         }
     }
 }
