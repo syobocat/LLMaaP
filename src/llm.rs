@@ -64,7 +64,7 @@ pub struct Choice {
     pub message: ResponseMessage,
 }
 
-#[derive(PartialEq, Eq, Deserialize)]
+#[derive(Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum FinishReason {
     Stop,

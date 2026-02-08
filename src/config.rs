@@ -8,6 +8,7 @@ pub struct Config {
     pub model: String,
     pub webhook: String,
     pub context_size: usize,
+    pub max_consecutive_tool_calls: Option<usize>,
     pub system_prompt: String,
 }
 
