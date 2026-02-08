@@ -144,6 +144,11 @@ pub fn boot(
                     });
                 }
             }
+
+            message_buffer.push(Message::Assistant {
+                content: String::new(),
+                tool_calls: None,
+            });
             data.memory.enqueue(message_buffer);
             data.save(data_path_override.unwrap_or(&String::from("data.json")))
                 .expect("Savefile should be writebale");
