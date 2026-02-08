@@ -87,17 +87,16 @@ impl Client {
             agent: ureq::agent(),
         }
     }
-    pub fn send(
-        &self,
-        config: &Config,
-        memory: Vec<Message>,
-        buffer: Vec<Message>,
-    ) -> anyhow::Result<Response> {
+    pub fn send(&self, config: &Config, memory: Vec<Message>) -> anyhow::Result<Response> {
         let mut messages = vec![Message::System {
             content: config.system_prompt.clone(),
         }];
+        if !matches!(memory[0], Message::User { content: _ }) {
+            messages.push(Message::User {
+                content: String::from("System: これ以前のログは切り捨てられています。"),
+            });
+        }
         messages.extend(memory);
-        messages.extend(buffer);
         let req = json!({
             "model": config.model,
             "messages": messages,

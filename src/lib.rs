@@ -44,7 +44,7 @@ pub fn boot(
     endpoint_override: Option<String>,
     token_override: Option<String>,
     model_override: Option<String>,
-    initial_message: Option<String>,
+    initial_message: Option<&String>,
 ) {
     env_logger::init_from_env(Env::default().default_filter_or("llmaap=info"));
 
@@ -68,49 +68,36 @@ pub fn boot(
     let client = llm::Client::new();
 
     log::info!("Booting...");
-    let mut boot = true;
+    let now = Local::now();
+    let mut boot_message = format!(
+        "System: 起動完了。現在時刻は{}、これが{}回目の起動です。",
+        now.format("%Y年%m月%d日 %H時%M分"),
+        data.bootcount
+    );
+    if let Some(message) = initial_message {
+        write!(
+            boot_message,
+            "\n\n管理者からメッセージがあります:\n{message}"
+        )
+        .unwrap();
+    }
+    data.memory.enqueue(vec![Message::User {
+        content: boot_message,
+    }]);
+
     let mut shutdown = false;
     while !shutdown {
-        let mut message_buffer = Vec::new();
-        let now = Local::now();
-        let system_message = if boot {
-            let mut boot_message = format!(
-                "System: 起動完了。現在時刻は{}、これが{}回目の起動です。",
-                now.format("%Y年%m月%d日 %H時%M分"),
-                data.bootcount
-            );
-            if let Some(ref message) = initial_message {
-                write!(
-                    boot_message,
-                    "\n\n管理者からメッセージがあります:\n{message}"
-                )
-                .unwrap();
-            }
-            boot = false;
-            boot_message
-        } else {
-            log::info!("Sending heartbeat...");
-            format!(
-                "System: heartbeat; 現在時刻: {}",
-                now.format("%Y年%m月%d日 %H時%M分"),
-            )
-        };
-        message_buffer.push(Message::User {
-            content: system_message,
-        });
         loop {
-            let Ok(resp) = client.send(
-                &config,
-                data.memory.clone().into_iter().flatten().collect(),
-                message_buffer.clone(),
-            ) else {
+            let Ok(resp) =
+                client.send(&config, data.memory.clone().into_iter().flatten().collect())
+            else {
                 log::warn!("Failed to connect to the endpoint. Retry in 10secs...");
                 std::thread::sleep(Duration::from_secs(10));
                 continue;
             };
             let choice = &resp.choices[0];
             let message = &choice.message;
-            message_buffer.push(Message::from_resp_message(message.clone()));
+            let mut message_buffer = vec![Message::from_resp_message(message.clone())];
 
             if choice.finish_reason == FinishReason::ToolCalls {
                 let calls = message.tool_calls.as_ref().unwrap();
@@ -144,15 +131,21 @@ pub fn boot(
                     });
                 }
             }
-
-            message_buffer.push(Message::Assistant {
-                content: String::new(),
-                tool_calls: None,
-            });
             data.memory.enqueue(message_buffer);
             data.save(data_path_override.unwrap_or(&String::from("data.json")))
                 .expect("Savefile should be writebale");
-            break;
+
+            if choice.finish_reason == FinishReason::Stop {
+                log::info!("Sending heartbeat...");
+                let heartbeat_message = format!(
+                    "System: heartbeat; 現在時刻: {}",
+                    now.format("%Y年%m月%d日 %H時%M分"),
+                );
+                data.memory.enqueue(vec![Message::User {
+                    content: heartbeat_message,
+                }]);
+                break;
+            }
         }
     }
 }

@@ -23,6 +23,6 @@ fn main() {
         args.endpoint,
         args.token,
         args.model,
-        args.initial_message,
+        args.initial_message.as_ref(),
     );
 }
