@@ -68,10 +68,9 @@ pub fn boot(
     let client = llm::Client::new();
 
     log::info!("Booting...");
-    let now = Local::now();
     let mut boot_message = format!(
         "System: 起動完了。現在時刻は{}、これが{}回目の起動です。",
-        now.format("%Y年%m月%d日 %H時%M分"),
+        Local::now().format("%Y年%m月%d日 %H時%M分"),
         data.bootcount
     );
     if let Some(message) = initial_message {
@@ -138,7 +137,7 @@ pub fn boot(
                 log::info!("Sending heartbeat...");
                 let heartbeat_message = format!(
                     "System: heartbeat; 現在時刻: {}",
-                    now.format("%Y年%m月%d日 %H時%M分"),
+                    Local::now().format("%Y年%m月%d日 %H時%M分"),
                 );
                 data.memory.enqueue(vec![Message::User {
                     content: heartbeat_message,
