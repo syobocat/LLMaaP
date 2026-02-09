@@ -107,12 +107,11 @@ pub fn boot(
                     log::info!("Executing `{name}`...");
                     let result = match name.as_str() {
                         "exec" => tools::call_exec(function.arguments.as_ref()),
-                        "notify" => {
-                            tools::call_notify(function.arguments.as_ref(), &config.webhook)
-                        }
-                        "ask" => {
-                            tools::call_ask(function.arguments.as_ref(), &config.webhook, &socket)
-                        }
+                        "communicate" => tools::call_communicate(
+                            function.arguments.as_ref(),
+                            &config.webhook,
+                            &socket,
+                        ),
                         "shutdown" => {
                             shutdown = true;
                             json!({

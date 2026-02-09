@@ -121,32 +121,18 @@ impl Client {
                 {
                     "type": "function",
                     "function": {
-                        "name": "notify",
-                        "description": "Sends a one-way message to the admin.",
+                        "name": "communicate",
+                        "description": "Contact the admin.",
                         "parameters": {
                             "type": "object",
-                            "required": ["message"],
+                            "required": ["message", "need_reply"],
                             "additionalProperties": false,
                             "properties": {
                                 "message": {
                                     "type": "string",
                                 },
-                            },
-                        },
-                    },
-                },
-                {
-                    "type": "function",
-                    "function": {
-                        "name": "ask",
-                        "description": "Sends a message to the admin and waits for a reply.",
-                        "parameters": {
-                            "type": "object",
-                            "required": ["message"],
-                            "additionalProperties": false,
-                            "properties": {
-                                "message": {
-                                    "type": "string",
+                                "reply_needed": {
+                                    "type": "boolean",
                                 },
                             },
                         },

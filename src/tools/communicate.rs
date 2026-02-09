@@ -7,60 +7,41 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 
 #[derive(Serialize)]
-pub struct NotifyOutput {
-    success: bool,
-    result: String,
-}
-
-#[derive(Serialize)]
-pub struct AskOutput {
+pub struct Output {
     success: bool,
     result: String,
     response: Option<String>,
 }
 
 #[derive(Deserialize)]
-pub struct Notify {
+pub struct Communicate {
     message: String,
+    reply_needed: bool,
 }
 
-#[derive(Deserialize)]
-pub struct Ask {
-    query: String,
-}
-
-impl Notify {
-    pub fn run(&self, webhook_url: &str) -> NotifyOutput {
+impl Communicate {
+    pub fn run(&self, webhook_url: &str, socket: &UnixListener) -> Output {
         if let Err(e) = send_discord(webhook_url, &self.message) {
-            NotifyOutput {
-                success: false,
-                result: format!("Failed to send the message to the admin: {e}"),
-            }
-        } else {
-            NotifyOutput {
-                success: true,
-                result: String::from("Message sent."),
-            }
-        }
-    }
-}
-
-impl Ask {
-    pub fn run(&self, webhook_url: &str, socket: &UnixListener) -> AskOutput {
-        if let Err(e) = send_discord(webhook_url, &self.query) {
-            return AskOutput {
+            return Output {
                 success: false,
                 result: format!("Failed to send the message to the admin: {e}"),
                 response: None,
             };
         }
+        if !self.reply_needed {
+            return Output {
+                success: true,
+                result: String::from("Message sent."),
+                response: None,
+            };
+        }
         match readline(socket) {
-            Ok(response) => AskOutput {
+            Ok(response) => Output {
                 success: true,
                 result: String::from("Message sent, reply received."),
                 response: Some(response),
             },
-            Err(e) => AskOutput {
+            Err(e) => Output {
                 success: false,
                 result: format!(
                     "The message was sent, but failed to receive a reply from the admin: {e}"
