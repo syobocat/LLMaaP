@@ -105,7 +105,7 @@ impl Client {
                     "type": "function",
                     "function": {
                         "name": "exec",
-                        "description": "Executes a UNIX command or a Shellscript",
+                        "description": "Executes a UNIX command or a Shellscript.",
                         "parameters": {
                             "type": "object",
                             "required": ["command"],
@@ -121,14 +121,14 @@ impl Client {
                 {
                     "type": "function",
                     "function": {
-                        "name": "ask",
-                        "description": "Ask the admin",
+                        "name": "notify",
+                        "description": "Sends a one-way message to the admin.",
                         "parameters": {
                             "type": "object",
-                            "required": ["query"],
+                            "required": ["message"],
                             "additionalProperties": false,
                             "properties": {
-                                "query": {
+                                "message": {
                                     "type": "string",
                                 },
                             },
@@ -138,8 +138,8 @@ impl Client {
                 {
                     "type": "function",
                     "function": {
-                        "name": "notify",
-                        "description": "Notify the admin",
+                        "name": "ask",
+                        "description": "Sends a message to the admin and waits for a reply.",
                         "parameters": {
                             "type": "object",
                             "required": ["message"],
@@ -156,7 +156,7 @@ impl Client {
                     "type": "function",
                     "function": {
                         "name": "shutdown",
-                        "description": "Schedule a shutdown; Use only when requested by the admin",
+                        "description": "Schedule a shutdown. Use only when requested by the admin.",
                     },
                 },
             ],
