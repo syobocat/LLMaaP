@@ -143,7 +143,12 @@ impl Client {
                     "function": {
                         "name": "get_memory",
                         "description": "Get the entire memory.",
-                        "parameters": {},
+                        "parameters": {
+                            "type": "object",
+                            "required": [],
+                            "additionalProperties": false,
+                            "properties": {},
+                        },
                     },
                 },
                 {
@@ -202,7 +207,12 @@ impl Client {
                     "function": {
                         "name": "shutdown",
                         "description": "Schedule a shutdown. Use only when requested by the admin.",
-                        "parameters": {},
+                        "parameters": {
+                            "type": "object",
+                            "required": [],
+                            "additionalProperties": false,
+                            "properties": {},
+                        },
                     },
                 },
             ],
