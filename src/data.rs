@@ -11,6 +11,7 @@ const SOCKET_PATH: &str = "/tmp/llmaap.sock";
 #[derive(Serialize, Deserialize)]
 struct SaveData {
     bootcount: u32,
+    objective: Option<String>,
     memory: String,
     context: Vec<Vec<Message>>,
 }
@@ -19,6 +20,7 @@ impl Default for SaveData {
     fn default() -> Self {
         Self {
             bootcount: 1,
+            objective: None,
             memory: String::new(),
             context: Vec::new(),
         }
@@ -30,6 +32,7 @@ pub struct Data {
     pub shutdown: bool,
     pub config: Config,
     pub socket: UnixListener,
+    pub objective: Option<String>,
     pub memory: String,
     pub context: AllocRingBuffer<Vec<Message>>,
 }
@@ -77,6 +80,7 @@ impl Data {
             shutdown: false,
             config,
             socket,
+            objective: savedata.objective,
             memory: savedata.memory,
             context,
         }
@@ -85,6 +89,7 @@ impl Data {
     pub fn save(&self) -> anyhow::Result<()> {
         let savedata = SaveData {
             bootcount: self.bootcount,
+            objective: self.objective.clone(),
             memory: self.memory.clone(),
             context: self.context.to_vec(),
         };

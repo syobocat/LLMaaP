@@ -62,8 +62,9 @@ pub fn boot(
 
     log::info!("Booting...");
     let mut boot_message = format!(
-        "System: 起動完了。現在時刻は{}、これが{}回目の起動です。",
+        "System Message: 起動完了\n\n現在時刻: {}\n現在の目標: {}\nこれが{}回目の起動です。",
         Local::now().format("%Y年%m月%d日 %H時%M分"),
+        data.objective.as_ref().unwrap_or(&String::from("未設定")),
         data.bootcount
     );
     if let Some(message) = initial_message {
@@ -110,8 +111,9 @@ pub fn boot(
             if choice.finish_reason == FinishReason::Stop {
                 log::info!("Sending heartbeat...");
                 let heartbeat_message = format!(
-                    "System: heartbeat; 現在時刻: {}",
+                    "System Message: heartbeat\n\n現在時刻: {}\n現在の目標: {}",
                     Local::now().format("%Y年%m月%d日 %H時%M分"),
+                    data.objective.as_ref().unwrap_or(&String::from("未設定"))
                 );
                 data.context.enqueue(vec![Message::User {
                     content: heartbeat_message,

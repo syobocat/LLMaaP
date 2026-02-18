@@ -5,6 +5,7 @@ use crate::data::Data;
 mod communicate;
 mod exec;
 mod memory;
+mod objective;
 
 pub fn call_tool(name: &str, args: Option<&String>, data: &mut Data) -> String {
     match name {
@@ -82,6 +83,30 @@ pub fn call_tool(name: &str, args: Option<&String>, data: &mut Data) -> String {
             "content": data.memory
         })
         .to_string(),
+        "update_objective" => {
+            let update = if let Some(args) = args {
+                let Ok(update) = serde_json::from_str::<objective::UpdateObjective>(args) else {
+                    return json!({
+                        "err": "Failed to call `replace_memory`: Malformed arguments",
+                    })
+                    .to_string();
+                };
+                update
+            } else {
+                objective::UpdateObjective::default()
+            };
+
+            if update.run(data) {
+                json!({
+                    "msg": "Objective updated."
+                })
+            } else {
+                json!({
+                    "msg": "Objective cleared."
+                })
+            }
+            .to_string()
+        }
         "shutdown" => {
             data.shutdown = true;
             json!({

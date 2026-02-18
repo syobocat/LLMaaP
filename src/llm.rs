@@ -182,6 +182,23 @@ impl Client {
                 {
                     "type": "function",
                     "function": {
+                        "name": "update_objective",
+                        "description": "Set the next objective",
+                        "parameters": {
+                            "type": "object",
+                            "required": [],
+                            "additionalProperties": false,
+                            "properties": {
+                                "content": {
+                                    "type": "string",
+                                },
+                            },
+                        },
+                    },
+                },
+                {
+                    "type": "function",
+                    "function": {
                         "name": "shutdown",
                         "description": "Schedule a shutdown. Use only when requested by the admin.",
                     },
