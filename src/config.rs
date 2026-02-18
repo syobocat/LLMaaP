@@ -1,7 +1,7 @@
 use anyhow::Context;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Deserialize)]
 pub struct Config {
     pub endpoint: String,
     pub token: Option<String>,
