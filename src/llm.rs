@@ -131,7 +131,7 @@ impl Client {
                                 "message": {
                                     "type": "string",
                                 },
-                                "reply_needed": {
+                                "need_reply": {
                                     "type": "boolean",
                                 },
                             },

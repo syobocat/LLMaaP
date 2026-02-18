@@ -16,7 +16,7 @@ pub struct Output {
 #[derive(Deserialize)]
 pub struct Communicate {
     message: String,
-    reply_needed: bool,
+    need_reply: bool,
 }
 
 impl Communicate {
@@ -28,7 +28,7 @@ impl Communicate {
                 response: None,
             };
         }
-        if !self.reply_needed {
+        if !self.need_reply {
             return Output {
                 success: true,
                 result: String::from("Message sent."),
