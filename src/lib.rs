@@ -62,7 +62,7 @@ pub fn boot(
 
     log::info!("Booting...");
     let mut boot_message = format!(
-        "System Message: 起動完了\n\n現在時刻: {}\n現在の目標: {}\nこれが{}回目の起動です。",
+        "System Message: 起動完了\n\n現在時刻: {}\n現在の目標: {}\n\nこれが{}回目の起動です。",
         Local::now().format("%Y年%m月%d日 %H時%M分"),
         data.objective.as_ref().unwrap_or(&String::from("未設定")),
         data.bootcount
@@ -79,6 +79,7 @@ pub fn boot(
     }]);
 
     while !data.shutdown {
+        let mut no_tools_called = true;
         loop {
             let Ok(resp) = client.send(
                 &data.config,
@@ -93,6 +94,7 @@ pub fn boot(
             let mut message_buffer = vec![Message::from_resp_message(message.clone())];
 
             if choice.finish_reason == FinishReason::ToolCalls {
+                no_tools_called = false;
                 let calls = message.tool_calls.as_ref().unwrap();
                 for call in calls {
                     let function = &call.function;
@@ -110,11 +112,18 @@ pub fn boot(
 
             if choice.finish_reason == FinishReason::Stop {
                 log::info!("Sending heartbeat...");
-                let heartbeat_message = format!(
+                let mut heartbeat_message = format!(
                     "System Message: heartbeat\n\n現在時刻: {}\n現在の目標: {}",
                     Local::now().format("%Y年%m月%d日 %H時%M分"),
                     data.objective.as_ref().unwrap_or(&String::from("未設定"))
                 );
+                if no_tools_called {
+                    write!(
+                        heartbeat_message,
+                        "\n\nSystem Message: 前回、ツールが呼ばれないまま応答が終了しました。管理者に連絡がしたい場合、`communicate`ツールを使用してください。ツール呼び出しなしでの終了が意図したものであれば、このメッセージは無視してください。"
+                    )
+                    .unwrap();
+                }
                 data.context.enqueue(vec![Message::User {
                     content: heartbeat_message,
                 }]);
