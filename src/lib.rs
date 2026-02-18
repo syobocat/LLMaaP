@@ -120,7 +120,7 @@ pub fn boot(
                 if no_tools_called {
                     write!(
                         heartbeat_message,
-                        "\n\nSystem Message: 前回、ツールが呼ばれないまま応答が終了しました。管理者に連絡がしたい場合、`communicate`ツールを使用してください。ツール呼び出しなしでの終了が意図したものであれば、このメッセージは無視してください。"
+                        "\n\nSystem Message: 前回、ツールが呼ばれないまま応答が終了しました。管理者に連絡したい場合、`communicate`ツールを使用してください。ツール呼び出しなしでの終了が意図したものであれば、このメッセージは無視して構いません。"
                     )
                     .unwrap();
                 }
