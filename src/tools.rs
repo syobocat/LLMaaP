@@ -4,6 +4,7 @@ use crate::data::Data;
 
 mod communicate;
 mod exec;
+mod memory;
 
 pub fn call_tool(name: &str, args: Option<&String>, data: &mut Data) -> String {
     match name {
@@ -37,6 +38,50 @@ pub fn call_tool(name: &str, args: Option<&String>, data: &mut Data) -> String {
             };
             serde_json::to_string(&communicate.run(&data.config.webhook, &data.socket)).unwrap()
         }
+        "append_memory" => {
+            let Some(args) = args else {
+                return json!({
+                    "err": "Failed to call `append_memory`: No arguments specified",
+                })
+                .to_string();
+            };
+            let Ok(append) = serde_json::from_str::<memory::AppendMemory>(args) else {
+                return json!({
+                    "err": "Failed to call `append_memory`: Malformed arguments",
+                })
+                .to_string();
+            };
+            append.run(&mut data.memory);
+
+            json!({
+                "msg": "Memory updated."
+            })
+            .to_string()
+        }
+        "replace_memory" => {
+            let Some(args) = args else {
+                return json!({
+                    "err": "Failed to call `replace_memory`: No arguments specified",
+                })
+                .to_string();
+            };
+            let Ok(replace) = serde_json::from_str::<memory::ReplaceMemory>(args) else {
+                return json!({
+                    "err": "Failed to call `replace_memory`: Malformed arguments",
+                })
+                .to_string();
+            };
+            replace.run(&mut data.memory);
+
+            json!({
+                "msg": "Memory updated."
+            })
+            .to_string()
+        }
+        "get_memory" => json!({
+            "content": data.memory
+        })
+        .to_string(),
         "shutdown" => {
             data.shutdown = true;
             json!({

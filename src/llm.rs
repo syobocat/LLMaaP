@@ -141,6 +141,47 @@ impl Client {
                 {
                     "type": "function",
                     "function": {
+                        "name": "get_memory",
+                        "description": "Get the entire memory.",
+                    },
+                },
+                {
+                    "type": "function",
+                    "function": {
+                        "name": "append_memory",
+                        "description": "Append the content to the memory.",
+                        "parameters": {
+                            "type": "object",
+                            "required": ["content"],
+                            "additionalProperties": false,
+                            "properties": {
+                                "content": {
+                                    "type": "string",
+                                },
+                            },
+                        },
+                    },
+                },
+                {
+                    "type": "function",
+                    "function": {
+                        "name": "replace_memory",
+                        "description": "Replace the memory with the content.",
+                        "parameters": {
+                            "type": "object",
+                            "required": ["content"],
+                            "additionalProperties": false,
+                            "properties": {
+                                "content": {
+                                    "type": "string",
+                                },
+                            },
+                        },
+                    },
+                },
+                {
+                    "type": "function",
+                    "function": {
                         "name": "shutdown",
                         "description": "Schedule a shutdown. Use only when requested by the admin.",
                     },
