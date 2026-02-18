@@ -105,7 +105,7 @@ impl Client {
                     "type": "function",
                     "function": {
                         "name": "exec",
-                        "description": "Executes a UNIX command or a Shellscript.",
+                        "description": "Executes a UNIX command or a Shellscript in the given environment.",
                         "parameters": {
                             "type": "object",
                             "required": ["command", "capture_output"],
@@ -125,7 +125,7 @@ impl Client {
                     "type": "function",
                     "function": {
                         "name": "communicate",
-                        "description": "Contact the admin.",
+                        "description": "Contact the admin. Be sure to use this if you want to communicate with, talk to, or ask the admin.",
                         "parameters": {
                             "type": "object",
                             "required": ["message", "need_reply"],
@@ -175,7 +175,7 @@ impl Client {
                     "type": "function",
                     "function": {
                         "name": "replace_memory",
-                        "description": "Replace the memory with the content.",
+                        "description": "Replace the memory with the content. Use this when you want to reconstruct your memory.",
                         "parameters": {
                             "type": "object",
                             "required": ["content"],
@@ -192,7 +192,7 @@ impl Client {
                     "type": "function",
                     "function": {
                         "name": "update_objective",
-                        "description": "Set the next objective",
+                        "description": "Set your next objective.",
                         "parameters": {
                             "type": "object",
                             "required": [],
