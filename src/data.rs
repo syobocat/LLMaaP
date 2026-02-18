@@ -1,12 +1,17 @@
+use std::{os::unix::net::UnixListener, path::Path};
+
 use anyhow::Context;
 use ringbuffer::{AllocRingBuffer, RingBuffer};
 use serde::{Deserialize, Serialize};
 
-use crate::llm::Message;
+use crate::{config::Config, llm::Message};
+
+const SOCKET_PATH: &str = "/tmp/llmaap.sock";
 
 #[derive(Serialize, Deserialize)]
 struct SaveData {
     bootcount: u32,
+    memory: String,
     context: Vec<Vec<Message>>,
 }
 
@@ -14,6 +19,7 @@ impl Default for SaveData {
     fn default() -> Self {
         Self {
             bootcount: 1,
+            memory: String::new(),
             context: Vec::new(),
         }
     }
@@ -21,6 +27,9 @@ impl Default for SaveData {
 
 pub struct Data {
     pub bootcount: u32,
+    pub config: Config,
+    pub socket: UnixListener,
+    pub memory: String,
     pub context: AllocRingBuffer<Vec<Message>>,
 }
 
@@ -44,23 +53,44 @@ impl SaveData {
 }
 
 impl Data {
-    pub fn load(path: &str, context_size: usize) -> Self {
-        let savedata = SaveData::load(path);
-        let mut context = AllocRingBuffer::new(context_size);
+    pub fn load(config: Config) -> Self {
+        let savedata = SaveData::load(
+            config
+                .data_path
+                .as_ref()
+                .unwrap_or(&String::from("data.json")),
+        );
+        let mut context = AllocRingBuffer::new(config.context_size);
         for shard in savedata.context {
             context.enqueue(shard);
         }
+
+        let socket_path = Path::new(SOCKET_PATH);
+        if socket_path.exists() {
+            std::fs::remove_file(socket_path).unwrap();
+        }
+        let socket = UnixListener::bind("/tmp/llmaap.sock").unwrap();
+
         Self {
             bootcount: savedata.bootcount,
+            config,
+            socket,
+            memory: savedata.memory,
             context,
         }
     }
 
-    pub fn save(&self, path: &str) -> anyhow::Result<()> {
+    pub fn save(&self) -> anyhow::Result<()> {
         let savedata = SaveData {
             bootcount: self.bootcount,
+            memory: self.memory.clone(),
             context: self.context.to_vec(),
         };
-        savedata.save(path)
+        savedata.save(
+            self.config
+                .data_path
+                .as_ref()
+                .unwrap_or(&String::from("data.json")),
+        )
     }
 }

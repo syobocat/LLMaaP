@@ -19,7 +19,7 @@ fn main() {
     let args = Args::parse();
     llmaap::boot(
         args.config,
-        args.save.as_ref(),
+        args.save,
         args.endpoint,
         args.token,
         args.model,

@@ -6,6 +6,7 @@ pub struct Config {
     pub endpoint: String,
     pub token: Option<String>,
     pub model: String,
+    pub data_path: Option<String>,
     pub webhook: String,
     pub context_size: usize,
     pub system_prompt: String,
