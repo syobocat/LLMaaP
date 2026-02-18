@@ -25,6 +25,7 @@ impl Exec {
         let mut process = Command::new("sh")
             .arg("-c")
             .arg(&self.command)
+            .stdin(Stdio::null())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()
