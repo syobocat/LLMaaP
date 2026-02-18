@@ -221,6 +221,10 @@ impl Client {
             .read_json()
             .context("Failed to parse json")?;
 
+        if !response.choices[0].message.content.is_empty() {
+            log::info!("Response: {}", response.choices[0].message.content);
+        }
+
         Ok(response)
     }
 }
