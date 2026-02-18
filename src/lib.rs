@@ -77,44 +77,47 @@ pub fn boot(
         content: boot_message,
     }]);
 
-    loop {
-        let Ok(resp) = client.send(
-            &data.config,
-            data.context.clone().into_iter().flatten().collect(),
-        ) else {
-            log::warn!("Failed to connect to the endpoint. Retry in 10secs...");
-            std::thread::sleep(Duration::from_secs(10));
-            continue;
-        };
-        let choice = &resp.choices[0];
-        let message = &choice.message;
-        let mut message_buffer = vec![Message::from_resp_message(message.clone())];
+    while !data.shutdown {
+        loop {
+            let Ok(resp) = client.send(
+                &data.config,
+                data.context.clone().into_iter().flatten().collect(),
+            ) else {
+                log::warn!("Failed to connect to the endpoint. Retry in 10secs...");
+                std::thread::sleep(Duration::from_secs(10));
+                continue;
+            };
+            let choice = &resp.choices[0];
+            let message = &choice.message;
+            let mut message_buffer = vec![Message::from_resp_message(message.clone())];
 
-        if choice.finish_reason == FinishReason::ToolCalls {
-            let calls = message.tool_calls.as_ref().unwrap();
-            for call in calls {
-                let function = &call.function;
-                let name = &function.name;
-                log::info!("Executing `{name}`...");
-                let result = tools::call_tool(name, function.arguments.as_ref(), &data);
-                message_buffer.push(Message::Tool {
-                    content: result,
-                    tool_call_id: call.id.clone(),
-                });
+            if choice.finish_reason == FinishReason::ToolCalls {
+                let calls = message.tool_calls.as_ref().unwrap();
+                for call in calls {
+                    let function = &call.function;
+                    let name = &function.name;
+                    log::info!("Executing `{name}`...");
+                    let result = tools::call_tool(name, function.arguments.as_ref(), &mut data);
+                    message_buffer.push(Message::Tool {
+                        content: result,
+                        tool_call_id: call.id.clone(),
+                    });
+                }
             }
-        }
-        data.context.enqueue(message_buffer);
-        data.save().expect("Savefile should be writebale");
+            data.context.enqueue(message_buffer);
+            data.save().expect("Savefile should be writebale");
 
-        if choice.finish_reason == FinishReason::Stop {
-            log::info!("Sending heartbeat...");
-            let heartbeat_message = format!(
-                "System: heartbeat; 現在時刻: {}",
-                Local::now().format("%Y年%m月%d日 %H時%M分"),
-            );
-            data.context.enqueue(vec![Message::User {
-                content: heartbeat_message,
-            }]);
+            if choice.finish_reason == FinishReason::Stop {
+                log::info!("Sending heartbeat...");
+                let heartbeat_message = format!(
+                    "System: heartbeat; 現在時刻: {}",
+                    Local::now().format("%Y年%m月%d日 %H時%M分"),
+                );
+                data.context.enqueue(vec![Message::User {
+                    content: heartbeat_message,
+                }]);
+                break;
+            }
         }
     }
 }

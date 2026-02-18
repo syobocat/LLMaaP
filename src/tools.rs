@@ -5,7 +5,7 @@ use crate::data::Data;
 mod communicate;
 mod exec;
 
-pub fn call_tool(name: &str, args: Option<&String>, data: &Data) -> String {
+pub fn call_tool(name: &str, args: Option<&String>, data: &mut Data) -> String {
     match name {
         "exec" => {
             let Some(args) = args else {
@@ -36,6 +36,13 @@ pub fn call_tool(name: &str, args: Option<&String>, data: &Data) -> String {
                 .to_string();
             };
             serde_json::to_string(&communicate.run(&data.config.webhook, &data.socket)).unwrap()
+        }
+        "shutdown" => {
+            data.shutdown = true;
+            json!({
+                "msg": "Shutdown scheduled."
+            })
+            .to_string()
         }
         _ => json!({
             "err": format!("Failed to call a tool: Unknown function `{name}`")

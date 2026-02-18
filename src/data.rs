@@ -27,6 +27,7 @@ impl Default for SaveData {
 
 pub struct Data {
     pub bootcount: u32,
+    pub shutdown: bool,
     pub config: Config,
     pub socket: UnixListener,
     pub memory: String,
@@ -73,6 +74,7 @@ impl Data {
 
         Self {
             bootcount: savedata.bootcount,
+            shutdown: false,
             config,
             socket,
             memory: savedata.memory,
