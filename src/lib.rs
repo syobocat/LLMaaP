@@ -80,16 +80,17 @@ pub fn boot(
         )
         .unwrap();
     }
-    data.memory.enqueue(vec![Message::User {
+    data.context.enqueue(vec![Message::User {
         content: boot_message,
     }]);
 
     let mut shutdown = false;
     while !shutdown {
         loop {
-            let Ok(resp) =
-                client.send(&config, data.memory.clone().into_iter().flatten().collect())
-            else {
+            let Ok(resp) = client.send(
+                &config,
+                data.context.clone().into_iter().flatten().collect(),
+            ) else {
                 log::warn!("Failed to connect to the endpoint. Retry in 10secs...");
                 std::thread::sleep(Duration::from_secs(10));
                 continue;
@@ -129,7 +130,7 @@ pub fn boot(
                     });
                 }
             }
-            data.memory.enqueue(message_buffer);
+            data.context.enqueue(message_buffer);
             data.save(data_path_override.unwrap_or(&String::from("data.json")))
                 .expect("Savefile should be writebale");
 
@@ -139,7 +140,7 @@ pub fn boot(
                     "System: heartbeat; 現在時刻: {}",
                     Local::now().format("%Y年%m月%d日 %H時%M分"),
                 );
-                data.memory.enqueue(vec![Message::User {
+                data.context.enqueue(vec![Message::User {
                     content: heartbeat_message,
                 }]);
                 break;
