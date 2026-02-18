@@ -10,6 +10,7 @@ use serde_json::json;
 pub struct Output {
     success: bool,
     result: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
     response: Option<String>,
 }
 

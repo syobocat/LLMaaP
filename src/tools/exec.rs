@@ -11,13 +11,16 @@ use wait_timeout::ChildExt;
 pub struct Output {
     timeout: bool,
     exit_code: Option<i32>,
-    stdout: String,
-    stderr: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    stdout: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    stderr: Option<String>,
 }
 
 #[derive(Deserialize)]
 pub struct Exec {
     command: String,
+    capture_output: bool,
 }
 
 impl Exec {
@@ -42,10 +45,15 @@ impl Exec {
             |status| status.code(),
         );
 
-        let mut stdout = String::new();
-        let mut stderr = String::new();
-        let _ = process.stdout.unwrap().read_to_string(&mut stdout);
-        let _ = process.stderr.unwrap().read_to_string(&mut stderr);
+        let (stdout, stderr) = if self.capture_output {
+            let mut stdout = String::new();
+            let mut stderr = String::new();
+            let _ = process.stdout.unwrap().read_to_string(&mut stdout);
+            let _ = process.stderr.unwrap().read_to_string(&mut stderr);
+            (Some(stdout), Some(stderr))
+        } else {
+            (None, None)
+        };
 
         Output {
             timeout: is_timeout,

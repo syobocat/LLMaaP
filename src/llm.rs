@@ -108,11 +108,14 @@ impl Client {
                         "description": "Executes a UNIX command or a Shellscript.",
                         "parameters": {
                             "type": "object",
-                            "required": ["command"],
+                            "required": ["command", "capture_output"],
                             "additionalProperties": false,
                             "properties": {
                                 "command": {
                                     "type": "string",
+                                },
+                                "capture_output": {
+                                    "type": "boolean",
                                 },
                             },
                         },
